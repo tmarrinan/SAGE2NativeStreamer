@@ -3,7 +3,11 @@ from PIL import Image
 
 operatingSystem = platform.system()
 
-if operatingSystem == "Darwin":
+if operatingSystem == "Windows":
+    import win32gui
+    import win32ui
+    import win32con
+elif operatingSystem == "Darwin":
     import Quartz.CoreGraphics as CG
 
 def screenshot(region=None, window=None):
@@ -13,6 +17,40 @@ def screenshot(region=None, window=None):
         return screenshotMacOSX(region, window)
     else:
         return screenshotLinux(region, window)
+
+def screenshotWindows(region, window):
+    rect = None
+    image = None
+    
+    if window != None:
+        rect = list(win32gui.GetWindowRect(window))
+        rect[2] = rect[2] - rect[0]
+        rect[3] = rect[3] - rect[1]
+        wDC = win32gui.GetWindowDC(window)
+        dcObj = win32ui.CreateDCFromHandle(wDC)
+        cDC = dcObj.CreateCompatibleDC()
+        image = win32ui.CreateBitmap()
+        image.CreateCompatibleBitmap(dcObj, rect[2], rect[3])
+        cDC.SelectObject(image)
+        cDC.BitBlt((0,0),(rect[2], rect[3]) , dcObj, (0,0), win32con.SRCCOPY)
+        
+        imageInfo = image.GetInfo()
+        bpp = imageInfo["bmBitsPixel"]
+        pixeldata = image.GetBitmapBits(True)
+        
+        pImg = None
+        if bpp == 32:
+            pImg = Image.frombuffer("RGBA", (imageInfo["bmWidth"], imageInfo["bmHeight"]), pixeldata, "raw", "BGRA")
+        elif bpp == 24:
+            pImg = Image.frombuffer("RGB", (imageInfo["bmWidth"], imageInfo["bmHeight"]), pixeldata)
+        
+        # Free Resources
+        dcObj.DeleteDC()
+        cDC.DeleteDC()
+        win32gui.ReleaseDC(window, wDC)
+        win32gui.DeleteObject(image.GetHandle())
+        
+        return pImg
 
 def screenshotMacOSX(region, window):
     rect = None

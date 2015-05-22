@@ -2,7 +2,9 @@ import platform
 
 operatingSystem = platform.system()
 
-if operatingSystem == "Darwin":
+if operatingSystem == "Windows":
+    import win32gui
+elif operatingSystem == "Darwin":
     import Quartz.CoreGraphics as CG
 
 def findAllWindows():
@@ -13,6 +15,11 @@ def findAllWindows():
     else:
         return findAllWindowsLinux()
 
+def findAllWindowsWindows():
+     validWindows = {}
+     win32gui.EnumWindows(windowEnumerationHandler, validWindows)
+     return validWindows
+ 
 def findAllWindowsMacOSX():
     windowInfo = CG.CGWindowListCopyWindowInfo(CG.kCGWindowListOptionOnScreenOnly, CG.kCGNullWindowID)
     validWindows = {}
@@ -26,6 +33,13 @@ def findAllWindowsMacOSX():
             };
     return validWindows
 
+def windowEnumerationHandler(windowId, validWindows):
+    rect = list(win32gui.GetWindowRect(windowId))
+    rect[2] = rect[2] - rect[0]
+    rect[3] = rect[3] - rect[1]
+    if win32gui.IsWindowVisible(windowId):
+        validWindows[win32gui.GetWindowText(windowId)] = {"id": windowId, "width": rect[2], "height": rect[3]}
+    
 def findWindowById(windowId):
     if operatingSystem == "Windows":
         return findWindowByIdWindows(windowId)
@@ -33,6 +47,18 @@ def findWindowById(windowId):
         return findWindowByIdMacOSX(windowId)
     else:
         return findWindowByIdLinux(windowId)
+
+def findWindowByIdWindows(windowId):
+    if win32gui.IsWindow(windowId):
+        rect = list(win32gui.GetWindowRect(windowId))
+        rect[2] = rect[2] - rect[0]
+        rect[3] = rect[3] - rect[1]
+        return {win32gui.GetWindowText(windowId): {
+            "id": windowId,
+            "width": rect[2],
+            "height": rect[3]
+        }}
+    return {}
 
 def findWindowByIdMacOSX(windowId):
     windowInfo = CG.CGWindowListCopyWindowInfo(CG.kCGWindowListOptionIncludingWindow, windowId)
@@ -52,6 +78,17 @@ def findDesktop():
     else:
         return findDesktopLinux()
 
+def findDesktopWindows():
+    desktopId = win32gui.GetDesktopWindow()
+    rect = list(win32gui.GetWindowRect(desktopId))
+    rect[2] = rect[2] - rect[0]
+    rect[3] = rect[3] - rect[1]
+    return {win32gui.GetWindowText(desktopId): {
+        "id": desktopId,
+        "width": rect[2],
+        "height": rect[3]
+    }}
+        
 def findDesktopMacOSX():
     windowInfo = CG.CGWindowListCopyWindowInfo(CG.kCGWindowListOptionOnScreenOnly, CG.kCGNullWindowID)
 
